@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-deployment
+  labels:
+    app: mongo
+spec:
+  replicas: 1 #Replicas dessa blueprint
+  selector:
+    matchLabels: # Seletor dizendo que os Pods que possuem essa matchLabel são desse Deployment
+      app: mongo
+  template: # Config para os Pods
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:5.0
+        ports:
+        - containerPort: 27017 # Porta de início do mongo, disponível na doc do dockerhub
+        env: # Setando as envs do banco para login do user no banco também disponível na doc do dockerhub
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef: # Referenciando o arquivo das secrets para usar o username 
+              name: mongo-secret
+              key: mongo-user
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef: # Referenciando o arquivo das secrets para usar a senha
+              name: mongo-secret
+              key: mongo-password
+--- # Separador em YAML
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service # Nome utilizado no arquivo do ConfigMap para mapear a URL do mongo
+spec:
+  selector: # Conectar o Serviço aos Pods
+    app: mongo
+  ports:
+    - protocol: TCP
+      port: 27017 # Port do Serviço, essa pode ser escolhida, normalmente é a mesma do Pod
+      targetPort: 27017 # Port do Pod, ou seja precisa ser igual à containerPort logo acima

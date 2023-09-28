@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-deployment
+  labels:
+    app: webapp
+spec:
+  replicas: 1 #Replicas dessa blueprint
+  selector:
+    matchLabels: # Seletor dizendo que os Pods que possuem essa matchLabel são desse Deployment
+      app: webapp
+  template: # Config para os Pods
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - name: webappdb
+        image: nanajanashia/k8s-demo-app:v1.0
+        ports:
+        - containerPort: 3000 # Porta de início do webapp, disponível na doc do dockerhub normalmente
+        env:  # Declarando as variáveis de ambiente dentro do WebApp para que seja possível a conexão com o banco
+        - name: USER_NAME
+          valueFrom:
+            secretKeyRef: # Referenciando o arquivo das secrets para usar a senha
+              name: mongo-secret
+              key: mongo-user
+        - name: USER_PWD
+          valueFrom:
+            secretKeyRef: # Referenciando o arquivo das secrets para usar a senha
+              name: mongo-secret
+              key: mongo-password
+        - name: DB_URL # Endpoint do banco de dados
+          valueFrom:
+            configMapKeyRef:
+              name: mongo-config
+              key: mongo-url
+--- # Separador em YAML
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service # Nome utilizado no arquivo do ConfigMap para mapear a URL do webapp
+spec:
+  type: NodePort # Por padrão essa propriedade é ClusterIP fazendo dela um IP interno não acessível pela internet
+  selector: # Conectar o Serviço aos Pods
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 3000 # Port do Serviço, essa pode ser escolhida, normalmente é a mesma do Pod
+      targetPort: 3000 # Port do Pod, ou seja precisa ser igual à containerPort logo acima
+      nodePort: 30100 #Precisa ser entre 30000 e 32767
